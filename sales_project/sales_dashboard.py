@@ -1,92 +1,74 @@
 import streamlit as st
+from datetime import datetime
+import requests
 import pandas as pd
-import plotly.express as px
-import os
+from PIL import Image
+import io
 import django
 
-# Set up Django environment (crucial step)
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'sales_project.settings') # Adjust if your project name is different
-django.setup()
+# Base URL for the Django backend
+BASE_URL = 'http://127.0.0.1:8000/sales_app/'
 
-# Now you can import your models safely
-from sales_app.models import Product, Region, Sale
-from sales_app.forms import SaleForm
-from django.core.files.uploadedfile import SimpleUploadedFile
-from io import BytesIO
+st.title('Sales Data Management System')
 
+# Add Sales Record Section
+st.header('Add Sales Record')
+date = st.date_input('Date', value=datetime.now())
+product = st.text_input('Product')
+sales_amount = st.number_input('Sales Amount', min_value=0.0, format="%.2f")
+region = st.text_input('Region')
+receipt_photo = st.file_uploader('Upload Receipt Photo', type=['png', 'jpg', 'jpeg'])
 
-
-st.title("Sales Data Management")
-
-tab1, tab2 = st.tabs(["New Sale", "Sales Dashboard"])
-
-with tab1:
-    # New Sale Form
-    st.header("Create New Sale")
-
-    with st.form("sale_form"):
-        date = st.date_input("Date")
-        product = st.selectbox("Product", Product.objects.all(), format_func=lambda x: x.name)
-        amount = st.number_input("Amount", min_value=0.0)
-        region = st.selectbox("Region", Region.objects.all(), format_func=lambda x: x.name)
-        receipt_photo = st.file_uploader("Receipt Photo", type=["jpg", "png", "jpeg"])
-
-        submitted = st.form_submit_button("Save Sale")
-        if submitted:
-            # Convert uploaded file to SimpleUploadedFile
-            if receipt_photo:
-                bytes_data = receipt_photo.getvalue()
-                content_file = SimpleUploadedFile(receipt_photo.name, bytes_data)
-            else:
-                content_file = None
-
-            # Create form instance with the data and file
-            form_data = {
-                'date': date,
-                'product': product.pk,
-                'amount': amount,
-                'region': region.pk,
-                'receipt_photo': content_file
-            }
-            form = SaleForm(form_data)
-
-            # Handle form submission
-            if form.is_valid():
-                form.save()
-                st.success("Sale data saved successfully!")
-            else:
-                st.error("Invalid data. Please check your input.")
-
-# ... other imports ...
-
-with tab2:
-    # Sales Data Dashboard
-    st.header("Sales Dashboard")
-    sales_data = Sale.objects.select_related("product", "region").all() # select_related for region also
-    if not sales_data.exists():
-        st.warning("No sales data yet. Please add some sales first.")
-    else:
-        # Convert queryset to list of dictionaries
-        sales_list = []
-        for sale in sales_data:
-            sales_list.append({
-                'date': sale.date,
-                'product__name': sale.product.name,
-                'amount': sale.amount,
-                'region__name': sale.region.name
-            })
+if st.button('Add Record'):
+    if date and product and sales_amount and region and receipt_photo:
+        # Ensure receipt photo has a filename
+        receipt_photo_name = receipt_photo.name
+        files = {'receipt_photo': (receipt_photo_name, receipt_photo, receipt_photo.type)}
+        data = {
+            'date': date.strftime('%Y-%m-%d'),
+            'product': product,
+            'sales_amount': sales_amount,
+            'region': region,
+        }
         
-        # Create DataFrame from the list of dictionaries
-        df = pd.DataFrame(sales_list)
+        # Sending data to Django backend
+        response = requests.post(BASE_URL + 'add/', data=data, files=files)
 
-        # Total Sales by Product (Corrected)
-        st.subheader("Total Sales by Product")
-        product_sales = df.groupby("product__name")["amount"].sum().reset_index()
-        fig = px.bar(product_sales, x="product__name", y="amount", title="Total Sales by Product")
-        st.plotly_chart(fig)
+        if response.status_code == 200:
+            st.success('Record added successfully!')
+        else:
+            st.error(f'Failed to add record: {response.json()}')
+    else:
+        st.error('Please fill in all fields and upload a receipt photo.')
 
-        # Total Sales by Region
-        st.subheader("Total Sales by Region")
-        region_sales = df.groupby("region__name")["amount"].sum().reset_index()
-        fig = px.pie(region_sales, values='amount', names='region__name', title='Total Sales by Region')
-        st.plotly_chart(fig)
+# View and Visualize Sales Data Section
+st.header('View and Visualize Sales Data')
+
+if st.button('Load Data'):
+    response = requests.get(BASE_URL)
+    if response.status_code == 200:
+        sales_data = response.json()
+        if sales_data:
+            df = pd.DataFrame(sales_data)
+            st.dataframe(df)
+            
+            # Visualizations
+            st.subheader('Sales Amount by Product')
+            sales_by_product = df.groupby('product')['sales_amount'].sum().reset_index()
+            st.bar_chart(sales_by_product, x='product', y='sales_amount')
+
+            st.subheader('Sales Amount by Region')
+            sales_by_region = df.groupby('region')['sales_amount'].sum().reset_index()
+            st.bar_chart(sales_by_region, x='region', y='sales_amount')
+
+            st.subheader('Sales Amount Over Time')
+            sales_over_time = df.groupby('date')['sales_amount'].sum().reset_index()
+            st.line_chart(sales_over_time, x='date', y='sales_amount')
+
+            # st.subheader('Sales Distribution by Product')
+            # st.pie_chart(df['product'].value_counts())
+        else:
+            st.warning('No sales data available.')
+    else:
+        st.error('Failed to load data.')
+
