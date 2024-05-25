@@ -1,15 +1,27 @@
-from django.shortcuts import render, redirect
-from .forms import SaleForm
-from .models import Sale
-from django.contrib import messages
+from django.shortcuts import render
 
-def create_sale(request):
+# Create your views here.
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import SalesRecord
+from .forms import SalesRecordForm
+
+@csrf_exempt
+def index(request):
+    if request.method == 'GET':
+        records = list(SalesRecord.objects.all().values())
+        return JsonResponse(records, safe=False)
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+@csrf_exempt
+def add_record(request):
     if request.method == 'POST':
-        form = SaleForm(request.POST, request.FILES)  # Include FILES for photo upload
+        form = SalesRecordForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Sale data saved successfully!')
-            return redirect('create_sale')  # Redirect to the same page to clear the form
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'errors': form.errors}, status=400)
     else:
-        form = SaleForm()
-    return render(request, 'sales_app/sale_form.html', {'form': form})
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
