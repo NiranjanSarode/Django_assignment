@@ -1,11 +1,10 @@
 from django import forms
-from .models import Sale
+from .models import SalesRecord
 
-class SaleForm(forms.ModelForm):
+class SalesRecordForm(forms.ModelForm):
     class Meta:
-        model = Sale  
-        fields = ['date', 'product', 'amount', 'region', 'receipt_photo']  # Include all fields
+        model = SalesRecord
+        fields = ['date', 'product', 'sales_amount', 'region', 'receipt_photo']
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date'}),  # Make it a date picker
         }
-
