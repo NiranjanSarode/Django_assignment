@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Database Management System</title>
+    <link rel="stylesheet" href="../static/light.css" id="theme">
+    <style>
+        body {
+            transition: background-color 0.5s, color 0.5s;
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            height: 100vh;
+            margin: 0;
+            color: black;
+        }
+        body.light-mode {
+            background-color: white;
+            color: black;
+        }
+        body.dark-mode {
+            background-color: #222;
+            color: rgb(13, 255, 0);
+        }
+        body.auto-mode {
+            background-color: lightgray;
+            color: black;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+        body.dark-mode .container {
+            background-color: #222;
+        }
+        .hidden {
+            display: none;
+        }
+        .theme-switcher {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+        #theme-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: white;
+            border: 1px solid #ccc;
+            z-index: 1000;
+        }
+        #theme-options button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+        }
+        #theme-options button:hover {
+            background-color: #f0f0f0;
+        }
+        .header {
+            text-align: center;
+            top: 0px;
+            position: absolute;
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            width: 100%;
+        }
+        .content {
+            margin: 80px 10px 10px 10px;
+            padding: 30px;
+        }
+        .username {
+            text-align: center;
+            height: 20px;
+            width: 100px;
+            position: absolute;
+            top: 72px;
+            right: 10px;
+            color: #8ffd83;
+            font-weight: bold;
+        }
+        img {
+            width: 50px;
+            height: 50px;
+        }
+        img.profile {
+            position: absolute;
+            right: 35px;
+            top: 20px;
+        }
+        .logoof {
+            position: absolute;
+            left: 10px;
+            top: 20px;
+        }
+        .theme-switcher {
+            position: absolute;
+            top: 35px;
+            right: -43px;
+            transform: rotate(90deg);
+        }
+        .add-product-button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+        }
+        .add-product-button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        .btn-container {
+            margin-top: 20px;
+        }
+        .btn {
+            display: block;
+            margin-top: 20px;
+            padding: 15px 30px; /* Increase padding */
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-size: 18px; /* Increase font size */
+            font-weight: bold; /* Add font weight */
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sales Database Management System</h1>
+    </div>
+    <img src="../static/profile.jpeg" alt="" class="profile">
+    <div class="username">
+        {{ request.user.username }}
+    </div>
+    <a href="{% url 'logout' %}" class="logoof">
+        <img src="../static/logout.png" alt="">
+    </a>
+    <div class="theme-switcher">
+        <button id="theme-button">Change Theme</button>
+        <div id="theme-options" class="hidden">
+            <button onclick="setTheme('light')">Light Mode</button>
+            <button onclick="setTheme('dark')">Dark Mode</button>
+            <button onclick="setTheme('auto')">Auto Mode</button>
+        </div>
+    </div>
+    <div class="content">
+        <h2>Welcome!</h2>
+        <p>Company Name : {{ request.user.username }}</p>
+        <a href="{% url 'add_product' %}" class="add-product-button">Add Product</a>
+        <div class="btn-container">
+            <a href="{% url 'streamlit_view' %}" target="_blank" class="btn">Visualize Data</a>
+        </div>
+        <!-- Display sales -->
+        <h2>Sales</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Customer Name</th>
+                    <th>Order Date</th>
+                    <th>Receipt</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                <tr>
+                    <td>{{ sale.order_id }}</td>
+                    <td>{{ sale.product }}</td>
+                    <td>{{ sale.quantity }}</td>
+                    <td>{{ sale.customer_name }}</td>
+                    <td>{{ sale.order_date }}</td>
+                    <td><a href="{{ sale.receipt_img.url }}" target="_blank">Show Receipt</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM fully loaded and parsed');
+            const themeButton = document.getElementById('theme-button');
+            const themeOptions = document.getElementById('theme-options');
+    
+            themeButton.addEventListener('click', () => {
+                console.log('Theme button clicked');
+                themeOptions.classList.toggle('hidden');
+            });
+    
+            document.addEventListener('click', (event) => {
+                if (!themeButton.contains(event.target) && !themeOptions.contains(event.target)) {
+                    themeOptions.classList.add('hidden');
+                }
+            });
+        });
+    
+        function setTheme(theme) {
+            console.log(`Setting theme to: ${theme}`);
+            document.body.classList.remove('light-mode', 'dark-mode', 'auto-mode');
+            document.body.classList.add(`${theme}-mode`);
+        }
+    </script>
+</body>
+</html>
